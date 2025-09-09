@@ -175,6 +175,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		})
 
 		// Verify getModels was called for each provider
+		expect(mockGetModels).toHaveBeenCalledWith({ provider: "deepinfra" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "openrouter", apiKey: "openrouter-key" }) // kilocode_change: apiKey
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "glama" })
@@ -190,6 +191,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
 				glama: mockModels,
@@ -197,7 +199,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				litellm: mockModels,
 				"kilocode-openrouter": mockModels,
 				ollama: mockModels, // kilocode_change
-				deepinfra: mockModels, // kilocode_change
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
 			},
@@ -280,6 +281,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
 				glama: mockModels,
@@ -287,7 +289,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				litellm: {},
 				"kilocode-openrouter": mockModels,
 				ollama: mockModels, // kilocode_change
-				deepinfra: mockModels, // kilocode_change
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
 			},
@@ -314,6 +315,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("Ollama API error")) // kilocode_change
 			.mockResolvedValueOnce(mockModels) // kilocode_change deepinfra
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway
+			.mockResolvedValueOnce(mockModels) // deepinfra
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -324,6 +326,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "routerModels",
 			routerModels: {
+				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: {},
 				glama: mockModels,
@@ -331,7 +334,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				litellm: {},
 				"kilocode-openrouter": mockModels,
 				ollama: {},
-				deepinfra: mockModels,
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
 			},
@@ -369,8 +371,8 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("Unbound API error")) // unbound
 			.mockResolvedValueOnce({}) // kilocode-openrouter - Success
 			.mockRejectedValueOnce(new Error("Ollama API error")) // kilocode_change
-			.mockRejectedValueOnce({}) // kilocode_change deepinfra
 			.mockRejectedValueOnce(new Error("Vercel AI Gateway error")) // vercel-ai-gateway
+			.mockRejectedValueOnce(new Error("DeepInfra API error")) // deepinfra
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -404,6 +406,13 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			success: false,
 			error: "Unbound API error",
 			values: { provider: "unbound" },
+		})
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "singleRouterModelFetchResponse",
+			success: false,
+			error: "DeepInfra API error",
+			values: { provider: "deepinfra" },
 		})
 
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
@@ -563,7 +572,10 @@ describe("webviewMessageHandler - message dialog preferences", () => {
 
 	describe("deleteMessage", () => {
 		it("should always show dialog for delete confirmation", async () => {
-			vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({} as any)
+			vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({
+				clineMessages: [],
+				apiConversationHistory: [],
+			} as any) // Mock current cline with proper structure
 
 			await webviewMessageHandler(mockClineProvider, {
 				type: "deleteMessage",
@@ -573,13 +585,17 @@ describe("webviewMessageHandler - message dialog preferences", () => {
 			expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 				type: "showDeleteMessageDialog",
 				messageTs: 123456789,
+				hasCheckpoint: false,
 			})
 		})
 	})
 
 	describe("submitEditedMessage", () => {
 		it("should always show dialog for edit confirmation", async () => {
-			vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({} as any)
+			vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({
+				clineMessages: [],
+				apiConversationHistory: [],
+			} as any) // Mock current cline with proper structure
 
 			await webviewMessageHandler(mockClineProvider, {
 				type: "submitEditedMessage",
@@ -591,6 +607,8 @@ describe("webviewMessageHandler - message dialog preferences", () => {
 				type: "showEditMessageDialog",
 				messageTs: 123456789,
 				text: "edited content",
+				hasCheckpoint: false,
+				images: undefined,
 			})
 		})
 	})
